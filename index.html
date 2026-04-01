@@ -1276,9 +1276,10 @@ function makeParticle() {
 }
 
 function launchConfetti() {
-  confParticles = [];
-  for (let i = 0; i < 160; i++) confParticles.push(makeParticle());
-  confRunning = true;
+  confetti({
+            particleCount:150,
+            spread:80
+        });
   animateConf();
 }
 
