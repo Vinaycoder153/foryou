@@ -38,6 +38,11 @@
       color: var(--white);
     }
 
+    /* Reduced motion support */
+    @media (prefers-reduced-motion: reduce) {
+      * { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
+    }
+
     /* =============================================
        GLOBAL PARTICLES CANVAS (background)
     ============================================= */
@@ -45,6 +50,14 @@
       position: fixed;
       inset: 0;
       z-index: 0;
+      pointer-events: none;
+    }
+
+    /* Confetti canvas */
+    #confetti-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 5;
       pointer-events: none;
     }
 
@@ -566,41 +579,35 @@
       color: rgba(255,255,255,.45);
       margin-top: 28px;
     }
-    #confetti-canvas {
+
+    /* =============================================
+       BALLOONS
+    ============================================= */
+    .balloon {
       position: fixed;
-      inset: 0;
-      z-index: 5;
+      bottom: -100px;
+      width: 40px;
+      height: 50px;
+      border-radius: 50%;
+      animation: floatUp linear forwards;
+      z-index: 20;
       pointer-events: none;
     }
-
-    .balloon {
-    position: fixed;
-    bottom: -100px;
-    width: 40px;
-    height: 50px;
-    border-radius: 50%;
-    animation: floatUp linear forwards;
-}
-.balloon::after {
-    content: "";
-    position: absolute;
-    width: 2px;
-    height: 30px;
-    background: white;
-    top: 50px;
-    left: 50%;
-}
-
-@keyframes floatUp {
-    from {
-        transform: translateY(0);
-        opacity: 1;
+    .balloon::after {
+      content: "";
+      position: absolute;
+      width: 2px;
+      height: 30px;
+      background: rgba(255,255,255,.85);
+      top: 50px;
+      left: 50%;
+      transform: translateX(-50%);
     }
-    to {
-        transform: translateY(-120vh);
-        opacity: 0;
+
+    @keyframes floatUp {
+      from { transform: translateY(0); opacity: 1; }
+      to { transform: translateY(-120vh); opacity: 0; }
     }
-}
 
     /* =============================================
        NAV ARROW
@@ -638,21 +645,6 @@
     .orb-pink  { background: #f06292; }
 
     /* =============================================
-       FLOATING STARS / SPARKLES
-    ============================================= */
-    .sparkle {
-      position: fixed;
-      border-radius: 50%;
-      pointer-events: none;
-      z-index: 1;
-      animation: twinkle var(--dur, 3s) ease-in-out infinite var(--delay, 0s);
-    }
-    @keyframes twinkle {
-      0%, 100% { opacity: .15; transform: scale(.7); }
-      50% { opacity: .8; transform: scale(1.1); }
-    }
-
-    /* =============================================
        SCROLLBAR INSIDE CHAT
     ============================================= */
     .chat-body::-webkit-scrollbar { width: 4px; }
@@ -686,6 +678,7 @@
       color: rgba(255,255,255,.85);
       cursor: pointer;
       transition: box-shadow .25s, transform .25s;
+      user-select: none;
     }
     .voice-note:hover { box-shadow: var(--glow-purple); transform: scale(1.04); }
     .voice-wave {
@@ -700,752 +693,775 @@
       border-radius: 3px;
       background: var(--purple);
       animation: wave var(--d, .8s) ease-in-out infinite alternate var(--dl, 0s);
+      animation-play-state: paused; /* IMPORTANT: paused by default */
     }
     @keyframes wave { from { height: 4px; } to { height: 16px; } }
   </style>
 </head>
 <body>
 
-<!-- Particle canvas (stars) -->
-<canvas id="particles-canvas"></canvas>
-<!-- Confetti canvas -->
-<canvas id="confetti-canvas"></canvas>
+  <!-- Particle canvas (stars) -->
+  <canvas id="particles-canvas"></canvas>
+  <!-- Confetti canvas -->
+  <canvas id="confetti-canvas"></canvas>
 
-<!-- Music toggle -->
-<button id="music-btn" title="Toggle music" aria-label="Toggle music">🎵</button>
+  <!-- Music toggle -->
+  <button id="music-btn" title="Toggle music" aria-label="Toggle music">🎵</button>
 
-<!-- Hidden audio (embed a royalty-free soft piano melody via data-URI seed tone oscillator) -->
-<audio id="bg-music" loop preload="none"></audio>
+  <!-- (kept) Hidden audio element (not used now, but harmless) -->
+  <audio id="bg-music" loop preload="none"></audio>
 
-<!-- Progress dots -->
-<div id="progress-dots">
-  <div class="dot active" data-screen="0"></div>
-  <div class="dot" data-screen="1"></div>
-  <div class="dot" data-screen="2"></div>
-  <div class="dot" data-screen="3"></div>
-  <div class="dot" data-screen="4"></div>
-  <div class="dot" data-screen="5"></div>
-  <div class="dot" data-screen="6"></div>
-  <div class="dot" data-screen="7"></div>
-</div>
-
-<!-- ===============================================================
-     SCREEN 1 — INTRO
-=============================================================== -->
-<section class="screen active" id="s1">
-  <div class="orb orb-purple" style="width:340px;height:340px;top:-80px;left:-80px;"></div>
-  <div class="orb orb-blue" style="width:260px;height:260px;bottom:-60px;right:-60px;"></div>
-
-  <p class="tag">April 1, 2025</p>
-  <div class="big-name">Sathwik Gowda P H</div>
-  <p class="happy-line">✨ Happy Birthday, brother ✨</p>
-
-  <div class="card" style="max-width:500px;width:100%;text-align:center;margin-bottom:28px;">
-    <p class="subtitle" id="typing-text"></p>
-    <span class="cursor-blink" id="cursor"></span>
+  <!-- Progress dots -->
+  <div id="progress-dots">
+    <div class="dot active" data-screen="0"></div>
+    <div class="dot" data-screen="1"></div>
+    <div class="dot" data-screen="2"></div>
+    <div class="dot" data-screen="3"></div>
+    <div class="dot" data-screen="4"></div>
+    <div class="dot" data-screen="5"></div>
+    <div class="dot" data-screen="6"></div>
+    <div class="dot" data-screen="7"></div>
   </div>
 
-  <button class="btn btn-primary" onclick="goToScreen(1)">Begin Your Journey &nbsp;→</button>
-  <p class="from-tag">— with love from Vinay M Y 💙</p>
-</section>
+  <!-- ===============================================================
+       SCREEN 1 — INTRO
+  =============================================================== -->
+  <section class="screen active" id="s1">
+    <div class="orb orb-purple" style="width:340px;height:340px;top:-80px;left:-80px;"></div>
+    <div class="orb orb-blue" style="width:260px;height:260px;bottom:-60px;right:-60px;"></div>
 
-<!-- ===============================================================
-     SCREEN 2 — YOU MATTER
-=============================================================== -->
-<section class="screen" id="s2">
-  <div class="orb orb-pink" style="width:300px;height:300px;top:-60px;right:-60px;"></div>
-  <div class="orb orb-purple" style="width:240px;height:240px;bottom:-50px;left:-50px;"></div>
+    <p class="tag">April 1, 2025</p>
+    <div class="big-name">Sathwik Gowda P H</div>
+    <p class="happy-line">✨ Happy Birthday, brother ✨</p>
 
-  <p class="section-label">Before anything else…</p>
-  <div class="big-msg">"You Matter."</div>
-  <p class="subtitle" style="margin-bottom:28px;">
-    Not because it's your birthday — but because every single day,<br>
-    you make the world a little better just by being in it.
-  </p>
-
-  <div class="matter-cards">
-    <div class="matter-card">
-      <div class="icon">🧠</div>
-      <p>Your <strong>perspective</strong> has shaped how I see the world.</p>
-    </div>
-    <div class="matter-card">
-      <div class="icon">🛡️</div>
-      <p>Your <strong>strength</strong> gave me courage on the hardest days.</p>
-    </div>
-    <div class="matter-card">
-      <div class="icon">😂</div>
-      <p>Your <strong>laugh</strong> is the best sound in any room.</p>
-    </div>
-    <div class="matter-card">
-      <div class="icon">❤️</div>
-      <p>Your <strong>presence</strong> alone is everything.</p>
-    </div>
-  </div>
-
-  <button class="btn btn-primary" onclick="goToScreen(2)">I'm ready →</button>
-</section>
-
-<!-- ===============================================================
-     SCREEN 3 — GRATITUDE
-=============================================================== -->
-<section class="screen" id="s3">
-  <div class="orb orb-blue" style="width:300px;height:300px;top:-70px;left:-60px;"></div>
-  <div class="orb orb-purple" style="width:220px;height:220px;bottom:-50px;right:-40px;"></div>
-
-  <p class="section-label">Why I'm grateful for you</p>
-  <h2 class="display-title" style="margin-bottom:4px;">Thank you, Sathwik.</h2>
-  <p class="subtitle" style="margin-bottom:0;">For being real, reliable, and rare.</p>
-
-  <div class="gratitude-grid">
-    <div class="g-card">
-      <div class="g-icon">🤝</div>
-      <h4>Comfort</h4>
-      <p>Talking to you feels like home. No judgment, just warmth.</p>
-    </div>
-    <div class="g-card">
-      <div class="g-icon">💡</div>
-      <h4>Mindset</h4>
-      <p>Your clarity and vision always snap me back to focus.</p>
-    </div>
-    <div class="g-card">
-      <div class="g-icon">⚡</div>
-      <h4>Energy</h4>
-      <p>Your vibe lifts the whole room — every single time.</p>
-    </div>
-    <div class="g-card">
-      <div class="g-icon">🦁</div>
-      <h4>Courage</h4>
-      <p>You face hard things head-on and quietly inspire everyone around you.</p>
-    </div>
-    <div class="g-card">
-      <div class="g-icon">🗣️</div>
-      <h4>Honesty</h4>
-      <p>You tell me the truth even when I don't want to hear it. That's rare.</p>
-    </div>
-    <div class="g-card">
-      <div class="g-icon">🎯</div>
-      <h4>Drive</h4>
-      <p>Watching you chase your goals reminds me to chase mine too.</p>
-    </div>
-  </div>
-
-  <button class="btn btn-primary" style="margin-top:10px;" onclick="goToScreen(3)">Keep going →</button>
-</section>
-
-<!-- ===============================================================
-     SCREEN 4 — INTERACTIVE QUESTION
-=============================================================== -->
-<section class="screen" id="s4">
-  <div class="orb orb-purple" style="width:280px;height:280px;top:-60px;right:-60px;"></div>
-  <div class="orb orb-pink" style="width:200px;height:200px;bottom:-50px;left:-40px;"></div>
-
-  <div class="question-box">
-    <p class="section-label">Just between us…</p>
-    <h2 class="display-title" style="font-size:clamp(1.6rem,5.5vw,2.6rem);">What does our friendship feel like?</h2>
-    <p class="q-text">Pick the one that hits hardest 👇</p>
-
-    <div class="q-options" id="q-options">
-      <div class="q-opt" onclick="pickOption(this,'Home — no matter where we are, it feels comfortable and real. 🏡')">
-        <span class="opt-emoji">🏡</span> A place called home
-      </div>
-      <div class="q-opt" onclick="pickOption(this,'Fuel — you push me to be better every day. ⚡')">
-        <span class="opt-emoji">⚡</span> High-octane fuel
-      </div>
-      <div class="q-opt" onclick="pickOption(this,'A safe zone — where I can be 100% myself, no filters. 🛡️')">
-        <span class="opt-emoji">🛡️</span> A safe zone
-      </div>
-      <div class="q-opt" onclick="pickOption(this,'Pure joy — because every moment with you is genuinely fun. 😂')">
-        <span class="opt-emoji">😂</span> Pure, unfiltered joy
-      </div>
+    <div class="card" style="max-width:500px;width:100%;text-align:center;margin-bottom:28px;">
+      <p class="subtitle" id="typing-text"></p>
+      <span class="cursor-blink" id="cursor"></span>
     </div>
 
-    <p id="q-response"></p>
-    <button class="btn btn-primary" id="q-next-btn" style="opacity:.4;pointer-events:none;" onclick="goToScreen(4)">
-      That's it 💬 →
-    </button>
-  </div>
-</section>
+    <button class="btn btn-primary" onclick="goToScreen(1)">Begin Your Journey &nbsp;→</button>
+    <p class="from-tag">— with love from Vinay M Y 💙</p>
+  </section>
 
-<!-- ===============================================================
-     SCREEN 5 — CHAT MEMORY
-=============================================================== -->
-<section class="screen" id="s5">
-  <div class="orb orb-blue" style="width:260px;height:260px;top:-50px;left:-50px;"></div>
+  <!-- ===============================================================
+       SCREEN 2 — YOU MATTER
+  =============================================================== -->
+  <section class="screen" id="s2">
+    <div class="orb orb-pink" style="width:300px;height:300px;top:-60px;right:-60px;"></div>
+    <div class="orb orb-purple" style="width:240px;height:240px;bottom:-50px;left:-50px;"></div>
 
-  <p class="section-label" style="margin-bottom:10px;">A few moments I'll never forget</p>
-  <h2 class="display-title" style="font-size:clamp(1.4rem,4.5vw,2rem);margin-bottom:18px;">Our Story in Messages</h2>
-
-  <div class="chat-header">
-    <div class="avatar">SG</div>
-    <div>
-      <div class="chat-name">Sathwik 🌟</div>
-      <div class="chat-status">● Online</div>
-    </div>
-  </div>
-
-  <div class="chat-body" id="chat-body">
-    <!-- Messages injected by JS for staggered reveal -->
-  </div>
-
-  <button class="btn btn-primary" style="margin-top:18px;" onclick="goToScreen(5)">See more →</button>
-</section>
-
-<!-- ===============================================================
-     SCREEN 6 — SLIDESHOW
-=============================================================== -->
-<section class="screen" id="s6">
-  <div class="orb orb-pink" style="width:260px;height:260px;top:-60px;right:-50px;"></div>
-  <div class="orb orb-blue" style="width:200px;height:200px;bottom:-40px;left:-40px;"></div>
-
-  <p class="section-label">Snapshots of us</p>
-  <h2 class="display-title" style="font-size:clamp(1.4rem,4.5vw,2rem);margin-bottom:18px;">Moments &amp; Memories</h2>
-
-  <div class="slideshow-wrap">
-    <div class="slide-frame">
-      <div class="slide sl1 active">
-        <div>🌅</div>
-        <div class="slide-caption">"That one long conversation we had at midnight — changed my perspective on everything."</div>
-      </div>
-      <div class="slide sl2">
-        <div>🏆</div>
-        <div class="slide-caption">"When you topped that tough exam after grinding non-stop — I was more proud than you were."</div>
-      </div>
-      <div class="slide sl3">
-        <div>🍕</div>
-        <div class="slide-caption">"Random food runs that turned into 3-hour deep talks. Best decisions ever."</div>
-      </div>
-      <div class="slide sl4">
-        <div>🎮</div>
-        <div class="slide-caption">"Gaming sessions where we'd lose track of time completely — no stress, just us."</div>
-      </div>
-      <div class="slide sl5">
-        <div>🌧️</div>
-        <div class="slide-caption">"That rough patch — you showed up without being asked. That's what brotherhood means."</div>
-      </div>
-    </div>
-    <div class="slide-dots" id="slide-dots"></div>
-  </div>
-
-  <button class="btn btn-primary" style="margin-top:20px;" onclick="goToScreen(6)">Almost there →</button>
-</section>
-
-<!-- ===============================================================
-     SCREEN 7 — FINAL MESSAGE
-=============================================================== -->
-<section class="screen" id="s7">
-  <div class="orb orb-purple" style="width:320px;height:320px;top:-80px;left:-80px;"></div>
-  <div class="orb orb-pink" style="width:240px;height:240px;bottom:-60px;right:-60px;"></div>
-
-  <div class="final-wrap">
-    <p class="section-label">From Vinay, with all sincerity</p>
-    <h2 class="display-title">To my brother Sathwik,</h2>
-
-    <p class="final-quote">
-      "Not everyone gets a friend who makes the journey better.<br>
-      I did — and that friend is you."
+    <p class="section-label">Before anything else…</p>
+    <div class="big-msg">"You Matter."</div>
+    <p class="subtitle" style="margin-bottom:28px;">
+      Not because it's your birthday — but because every single day,<br>
+      you make the world a little better just by being in it.
     </p>
 
-    <div class="wish-list" id="wish-list">
-      <div class="wish-item"><span class="wi">🌟</span> May this year bring you everything you've been working towards.</div>
-      <div class="wish-item"><span class="wi">💪</span> May you stay strong even when things get heavy.</div>
-      <div class="wish-item"><span class="wi">😄</span> May you laugh harder, dream bigger, and live fully.</div>
-      <div class="wish-item"><span class="wi">🤝</span> And know — I've got your back. Always. No conditions.</div>
+    <div class="matter-cards">
+      <div class="matter-card">
+        <div class="icon">🧠</div>
+        <p>Your <strong>perspective</strong> has shaped how I see the world.</p>
+      </div>
+      <div class="matter-card">
+        <div class="icon">🛡️</div>
+        <p>Your <strong>strength</strong> gave me courage on the hardest days.</p>
+      </div>
+      <div class="matter-card">
+        <div class="icon">😂</div>
+        <p>Your <strong>laugh</strong> is the best sound in any room.</p>
+      </div>
+      <div class="matter-card">
+        <div class="icon">❤️</div>
+        <p>Your <strong>presence</strong> alone is everything.</p>
+      </div>
     </div>
 
-    <div style="text-align:center;">
-      <div class="voice-note" id="voice-toggle" onclick="toggleVoiceNote()" title="Play voice note">
-        <span>🎙️</span>
-        <span id="voice-label">Play voice note</span>
-        <div class="voice-wave" id="voice-wave">
-          <span style="--d:.6s;--dl:0s;height:6px"></span>
-          <span style="--d:.7s;--dl:.1s;height:14px"></span>
-          <span style="--d:.5s;--dl:.15s;height:10px"></span>
-          <span style="--d:.8s;--dl:.05s;height:16px"></span>
-          <span style="--d:.6s;--dl:.2s;height:8px"></span>
-          <span style="--d:.7s;--dl:.1s;height:12px"></span>
+    <button class="btn btn-primary" onclick="goToScreen(2)">I'm ready →</button>
+  </section>
+
+  <!-- ===============================================================
+       SCREEN 3 — GRATITUDE
+  =============================================================== -->
+  <section class="screen" id="s3">
+    <div class="orb orb-blue" style="width:300px;height:300px;top:-70px;left:-60px;"></div>
+    <div class="orb orb-purple" style="width:220px;height:220px;bottom:-50px;right:-40px;"></div>
+
+    <p class="section-label">Why I'm grateful for you</p>
+    <h2 class="display-title" style="margin-bottom:4px;">Thank you, Sathwik.</h2>
+    <p class="subtitle" style="margin-bottom:0;">For being real, reliable, and rare.</p>
+
+    <div class="gratitude-grid">
+      <div class="g-card">
+        <div class="g-icon">🤝</div>
+        <h4>Comfort</h4>
+        <p>Talking to you feels like home. No judgment, just warmth.</p>
+      </div>
+      <div class="g-card">
+        <div class="g-icon">💡</div>
+        <h4>Mindset</h4>
+        <p>Your clarity and vision always snap me back to focus.</p>
+      </div>
+      <div class="g-card">
+        <div class="g-icon">⚡</div>
+        <h4>Energy</h4>
+        <p>Your vibe lifts the whole room — every single time.</p>
+      </div>
+      <div class="g-card">
+        <div class="g-icon">🦁</div>
+        <h4>Courage</h4>
+        <p>You face hard things head-on and quietly inspire everyone around you.</p>
+      </div>
+      <div class="g-card">
+        <div class="g-icon">🗣️</div>
+        <h4>Honesty</h4>
+        <p>You tell me the truth even when I don't want to hear it. That's rare.</p>
+      </div>
+      <div class="g-card">
+        <div class="g-icon">🎯</div>
+        <h4>Drive</h4>
+        <p>Watching you chase your goals reminds me to chase mine too.</p>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" style="margin-top:10px;" onclick="goToScreen(3)">Keep going →</button>
+  </section>
+
+  <!-- ===============================================================
+       SCREEN 4 — INTERACTIVE QUESTION
+  =============================================================== -->
+  <section class="screen" id="s4">
+    <div class="orb orb-purple" style="width:280px;height:280px;top:-60px;right:-60px;"></div>
+    <div class="orb orb-pink" style="width:200px;height:200px;bottom:-50px;left:-40px;"></div>
+
+    <div class="question-box">
+      <p class="section-label">Just between us…</p>
+      <h2 class="display-title" style="font-size:clamp(1.6rem,5.5vw,2.6rem);">What does our friendship feel like?</h2>
+      <p class="q-text">Pick the one that hits hardest 👇</p>
+
+      <div class="q-options" id="q-options">
+        <div class="q-opt" onclick="pickOption(this,'Home — no matter where we are, it feels comfortable and real. 🏡')">
+          <span class="opt-emoji">🏡</span> A place called home
+        </div>
+        <div class="q-opt" onclick="pickOption(this,'Fuel — you push me to be better every day. ⚡')">
+          <span class="opt-emoji">⚡</span> High-octane fuel
+        </div>
+        <div class="q-opt" onclick="pickOption(this,'A safe zone — where I can be 100% myself, no filters. 🛡️')">
+          <span class="opt-emoji">🛡️</span> A safe zone
+        </div>
+        <div class="q-opt" onclick="pickOption(this,'Pure joy — because every moment with you is genuinely fun. 😂')">
+          <span class="opt-emoji">😂</span> Pure, unfiltered joy
         </div>
       </div>
-      <div id="voice-msg" style="margin-top:10px;font-size:.82rem;color:rgba(255,255,255,.5);display:none;">
-        🎵 Voice note is playing... (add an audio file named <code>voice.mp3</code> to activate)
+
+      <p id="q-response"></p>
+      <button class="btn btn-primary" id="q-next-btn" style="opacity:.4;pointer-events:none;" onclick="goToScreen(4)">
+        That's it 💬 →
+      </button>
+    </div>
+  </section>
+
+  <!-- ===============================================================
+       SCREEN 5 — CHAT MEMORY
+  =============================================================== -->
+  <section class="screen" id="s5">
+    <div class="orb orb-blue" style="width:260px;height:260px;top:-50px;left:-50px;"></div>
+
+    <p class="section-label" style="margin-bottom:10px;">A few moments I'll never forget</p>
+    <h2 class="display-title" style="font-size:clamp(1.4rem,4.5vw,2rem);margin-bottom:18px;">Our Story in Messages</h2>
+
+    <div class="chat-header">
+      <div class="avatar">SG</div>
+      <div>
+        <div class="chat-name">Sathwik 🌟</div>
+        <div class="chat-status">● Online</div>
       </div>
     </div>
 
-    <button class="btn btn-primary" style="margin-top:28px;" onclick="goToScreen(7)">🎉 Celebrate! →</button>
+    <div class="chat-body" id="chat-body"></div>
+
+    <button class="btn btn-primary" style="margin-top:18px;" onclick="goToScreen(5)">See more →</button>
+  </section>
+
+  <!-- ===============================================================
+       SCREEN 6 — SLIDESHOW
+  =============================================================== -->
+  <section class="screen" id="s6">
+    <div class="orb orb-pink" style="width:260px;height:260px;top:-60px;right:-50px;"></div>
+    <div class="orb orb-blue" style="width:200px;height:200px;bottom:-40px;left:-40px;"></div>
+
+    <p class="section-label">Snapshots of us</p>
+    <h2 class="display-title" style="font-size:clamp(1.4rem,4.5vw,2rem);margin-bottom:18px;">Moments &amp; Memories</h2>
+
+    <div class="slideshow-wrap">
+      <div class="slide-frame">
+        <div class="slide sl1 active">
+          <div>🌅</div>
+          <div class="slide-caption">"That one long conversation we had at midnight — changed my perspective on everything."</div>
+        </div>
+        <div class="slide sl2">
+          <div>🏆</div>
+          <div class="slide-caption">"When you topped that tough exam after grinding non-stop — I was more proud than you were."</div>
+        </div>
+        <div class="slide sl3">
+          <div>🍕</div>
+          <div class="slide-caption">"Random food runs that turned into 3-hour deep talks. Best decisions ever."</div>
+        </div>
+        <div class="slide sl4">
+          <div>🎮</div>
+          <div class="slide-caption">"Gaming sessions where we'd lose track of time completely — no stress, just us."</div>
+        </div>
+        <div class="slide sl5">
+          <div>🌧️</div>
+          <div class="slide-caption">"That rough patch — you showed up without being asked. That's what brotherhood means."</div>
+        </div>
+      </div>
+      <div class="slide-dots" id="slide-dots"></div>
+    </div>
+
+    <button class="btn btn-primary" style="margin-top:20px;" onclick="goToScreen(6)">Almost there →</button>
+  </section>
+
+  <!-- ===============================================================
+       SCREEN 7 — FINAL MESSAGE
+  =============================================================== -->
+  <section class="screen" id="s7">
+    <div class="orb orb-purple" style="width:320px;height:320px;top:-80px;left:-80px;"></div>
+    <div class="orb orb-pink" style="width:240px;height:240px;bottom:-60px;right:-60px;"></div>
+
+    <div class="final-wrap">
+      <p class="section-label">From Vinay, with all sincerity</p>
+      <h2 class="display-title">To my brother Sathwik,</h2>
+
+      <p class="final-quote">
+        "Not everyone gets a friend who makes the journey better.<br>
+        I did — and that friend is you."
+      </p>
+
+      <div class="wish-list" id="wish-list">
+        <div class="wish-item"><span class="wi">🌟</span> May this year bring you everything you've been working towards.</div>
+        <div class="wish-item"><span class="wi">💪</span> May you stay strong even when things get heavy.</div>
+        <div class="wish-item"><span class="wi">😄</span> May you laugh harder, dream bigger, and live fully.</div>
+        <div class="wish-item"><span class="wi">🤝</span> And know — I've got your back. Always. No conditions.</div>
+      </div>
+
+      <div style="text-align:center;">
+        <div class="voice-note" id="voice-toggle" onclick="toggleVoiceNote()" title="Play voice note">
+          <span>🎙️</span>
+          <span id="voice-label">Play voice note</span>
+          <div class="voice-wave" id="voice-wave">
+            <span style="--d:.6s;--dl:0s;height:6px"></span>
+            <span style="--d:.7s;--dl:.1s;height:14px"></span>
+            <span style="--d:.5s;--dl:.15s;height:10px"></span>
+            <span style="--d:.8s;--dl:.05s;height:16px"></span>
+            <span style="--d:.6s;--dl:.2s;height:8px"></span>
+            <span style="--d:.7s;--dl:.1s;height:12px"></span>
+          </div>
+        </div>
+        <div id="voice-msg" style="margin-top:10px;font-size:.82rem;color:rgba(255,255,255,.5);display:none;">
+          🎵 Voice note is playing... (add an audio file named <code>voice.mp3</code> to activate)
+        </div>
+      </div>
+
+      <button class="btn btn-primary" style="margin-top:28px;" onclick="goToScreen(7)">🎉 Celebrate! →</button>
+    </div>
+  </section>
+
+  <!-- ===============================================================
+       SCREEN 8 — CELEBRATION
+  =============================================================== -->
+  <section class="screen" id="s8">
+    <div class="celebrate-content">
+      <div class="big-cake">🎂</div>
+      <h1 class="celebrate-title">Happy Birthday, Sathwik! 🎉</h1>
+      <p class="celebrate-sub">
+        Here's to you — one of the most genuine,<br>
+        driven, and big-hearted people I know.<br><br>
+        <strong style="color:#d7a8ff;">Today is yours. Go celebrate!</strong>
+      </p>
+
+      <button class="btn btn-primary" onclick="launchConfetti()" style="margin-bottom:14px;">
+        🎊 More confetti!
+      </button>
+      <br>
+      <button class="btn btn-ghost" onclick="goToScreen(0)">↩ Start Over</button>
+
+      <p class="signature">— Vinay M Y &nbsp;|&nbsp; Your ride-or-die 💙</p>
+    </div>
+  </section>
+
+  <!-- Swipe hint -->
+  <div class="nav-next" id="swipe-hint">
+    <span class="arrow">↑ swipe up ↑</span>
   </div>
-</section>
 
-<!-- ===============================================================
-     SCREEN 8 — CELEBRATION
-=============================================================== -->
-<section class="screen" id="s8">
-  <div class="celebrate-content">
-    <div class="big-cake">🎂</div>
-    <h1 class="celebrate-title">Happy Birthday, Sathwik! 🎉</h1>
-    <p class="celebrate-sub">
-      Here's to you — one of the most genuine,<br>
-      driven, and big-hearted people I know.<br><br>
-      <strong style="color:#d7a8ff;">Today is yours. Go celebrate!</strong>
-    </p>
+  <!-- =============================================
+       JAVASCRIPT
+  ============================================= -->
+  <script>
+  /* -----------------------------------------------
+     STATE
+  ----------------------------------------------- */
+  let currentScreen = 0;
+  const TOTAL_SCREENS = 8;
+  const screens = Array.from(document.querySelectorAll('.screen'));
+  const dots    = Array.from(document.querySelectorAll('.dot'));
 
-    <button class="btn btn-primary" onclick="launchConfetti()" style="margin-bottom:14px;">
-      🎊 More confetti!
-    </button>
-    <br>
-    <button class="btn btn-ghost" onclick="goToScreen(0)">↩ Start Over</button>
+  /* -----------------------------------------------
+     SCREEN NAVIGATION
+  ----------------------------------------------- */
+  function goToScreen(idx) {
+    if (idx < 0 || idx >= TOTAL_SCREENS) return;
 
-    <p class="signature">— Vinay M Y &nbsp;|&nbsp; Your ride-or-die 💙</p>
-  </div>
-</section>
+    const prev = screens[currentScreen];
+    prev.classList.add('exit');
+    prev.classList.remove('active');
+    setTimeout(() => prev.classList.remove('exit'), 650);
 
-<!-- Swipe hint -->
-<div class="nav-next" id="swipe-hint">
-  <span class="arrow">↑ swipe up ↑</span>
-</div>
+    currentScreen = idx;
+    const next = screens[currentScreen];
+    next.classList.add('active');
 
-<!-- =============================================
-     JAVASCRIPT
-============================================= -->
-<script>
-/* -----------------------------------------------
-   STATE
------------------------------------------------ */
-let currentScreen = 0;
-const TOTAL_SCREENS = 8;
-const screens = Array.from(document.querySelectorAll('.screen'));
-const dots    = Array.from(document.querySelectorAll('.dot'));
+    dots.forEach((d, i) => d.classList.toggle('active', i === currentScreen));
 
-/* -----------------------------------------------
-   SCREEN NAVIGATION
------------------------------------------------ */
-function goToScreen(idx) {
-  if (idx < 0 || idx >= TOTAL_SCREENS) return;
-  const prev = screens[currentScreen];
-  prev.classList.add('exit');
-  prev.classList.remove('active');
-  setTimeout(() => prev.classList.remove('exit'), 650);
+    // Screen-specific actions
+    if (currentScreen === 5) initSlideshow();
+    if (currentScreen === 6) revealWishList();
+    if (currentScreen === 7) { launchConfetti(); playBgMusic(); }
+    if (currentScreen === 4) populateChat();
 
-  currentScreen = idx;
-  const next = screens[currentScreen];
-  next.classList.add('active');
-
-  dots.forEach((d, i) => d.classList.toggle('active', i === currentScreen));
-
-  // Screen-specific actions
-  if (currentScreen === 5) initSlideshow();
-  if (currentScreen === 6) revealWishList();
-  if (currentScreen === 7) { launchConfetti(); playBgMusic(); }
-  if (currentScreen === 4) populateChat();
-
-  // hide swipe hint on last screen
-  document.getElementById('swipe-hint').style.opacity = currentScreen === 7 ? '0' : '1';
-}
-
-// Dot click navigation
-dots.forEach(d => d.addEventListener('click', () => goToScreen(+d.dataset.screen)));
-
-/* -----------------------------------------------
-   TOUCH / SWIPE
------------------------------------------------ */
-let touchStartY = 0;
-document.addEventListener('touchstart', e => { touchStartY = e.touches[0].clientY; }, { passive: true });
-document.addEventListener('touchend', e => {
-  const dy = touchStartY - e.changedTouches[0].clientY;
-  if (Math.abs(dy) > 55) goToScreen(currentScreen + (dy > 0 ? 1 : -1));
-}, { passive: true });
-
-/* Keyboard */
-document.addEventListener('keydown', e => {
-  if (e.key === 'ArrowDown' || e.key === 'ArrowRight') goToScreen(currentScreen + 1);
-  if (e.key === 'ArrowUp'   || e.key === 'ArrowLeft')  goToScreen(currentScreen - 1);
-});
-
-/* -----------------------------------------------
-   TYPING ANIMATION — SCREEN 1
------------------------------------------------ */
-const typingLines = [
-  "Hey man — today is your day.",
-  "Not a regular birthday wish.",
-  "This one is built just for you.",
-  "Sit back, and feel it. 🙌"
-];
-let tl = 0, tc = 0, typing = true;
-const typingEl = document.getElementById('typing-text');
-const cursorEl = document.getElementById('cursor');
-
-function typeLoop() {
-  if (typing) {
-    if (tc < typingLines[tl].length) {
-      typingEl.textContent += typingLines[tl][tc++];
-      setTimeout(typeLoop, 52);
-    } else {
-      typing = false;
-      setTimeout(typeLoop, 1600);
-    }
-  } else {
-    if (tc > 0) {
-      typingEl.textContent = typingLines[tl].substring(0, --tc);
-      setTimeout(typeLoop, 28);
-    } else {
-      typing = true;
-      tl = (tl + 1) % typingLines.length;
-      setTimeout(typeLoop, 400);
-    }
+    // hide swipe hint on last screen
+    const hint = document.getElementById('swipe-hint');
+    if (hint) hint.style.opacity = currentScreen === 7 ? '0' : '1';
   }
-}
-typeLoop();
 
-/* -----------------------------------------------
-   INTERACTIVE QUESTION — SCREEN 4
------------------------------------------------ */
-function pickOption(el, msg) {
-  document.querySelectorAll('.q-opt').forEach(o => o.classList.remove('selected'));
-  el.classList.add('selected');
-  const resp = document.getElementById('q-response');
-  resp.style.opacity = 0;
-  setTimeout(() => {
-    resp.textContent = '✨ ' + msg;
-    resp.style.opacity = 1;
-  }, 220);
-  const btn = document.getElementById('q-next-btn');
-  btn.style.opacity = '1';
-  btn.style.pointerEvents = 'all';
-}
+  // Dot click navigation
+  dots.forEach(d => d.addEventListener('click', () => goToScreen(+d.dataset.screen)));
 
-/* -----------------------------------------------
-   CHAT — SCREEN 5
------------------------------------------------ */
-const chatMessages = [
-  { side: 'left',  text: "Bro, you up? Need to talk about something.", time: "10:42 PM" },
-  { side: 'right', text: "Always 🫡 what's going on?", time: "10:43 PM" },
-  { side: 'left',  text: "I'm overthinking everything again. The whole future thing.", time: "10:44 PM" },
-  { side: 'right', text: "Breathe. You've handled worse. Remember last year? You thought that too.", time: "10:45 PM" },
-  { side: 'left',  text: "Yeah but this feels different man.", time: "10:46 PM" },
-  { side: 'right', text: "It always does. That's just the brain being loud. You're good. We're good. 💙", time: "10:47 PM" },
-  { side: 'left',  text: "Lol how are you always this calm 😭", time: "10:49 PM" },
-  { side: 'right', text: "Because one of us has to be 😂  Also — you'd do the same for me.", time: "10:50 PM" },
-  { side: 'left',  text: "Seriously though. Thanks, Sathwik. You don't know how much this helps.", time: "10:52 PM" },
-  { side: 'right', text: "That's what brothers are for. Now sleep — we've got things to conquer tomorrow 🚀", time: "10:53 PM" },
-];
+  /* -----------------------------------------------
+     TOUCH / SWIPE
+  ----------------------------------------------- */
+  let touchStartY = 0;
+  document.addEventListener('touchstart', e => { touchStartY = e.touches[0].clientY; }, { passive: true });
+  document.addEventListener('touchend', e => {
+    const dy = touchStartY - e.changedTouches[0].clientY;
+    if (Math.abs(dy) > 55) goToScreen(currentScreen + (dy > 0 ? 1 : -1));
+  }, { passive: true });
 
-function populateChat() {
-  const body = document.getElementById('chat-body');
-  if (body.children.length > 0) return; // already populated
-  chatMessages.forEach((m, i) => {
-    setTimeout(() => {
-      const row = document.createElement('div');
-      row.className = 'msg-row ' + (m.side === 'right' ? 'right' : '');
-      row.innerHTML = `
-        <div class="avatar" style="width:28px;height:28px;font-size:.65rem;">${m.side === 'left' ? 'SG' : 'VM'}</div>
-        <div>
-          <div class="msg-time" style="text-align:${m.side === 'right' ? 'right' : 'left'}">${m.time}</div>
-          <div class="bubble bubble-${m.side}">${m.text}</div>
-        </div>`;
-      body.appendChild(row);
-      body.scrollTop = body.scrollHeight;
-    }, i * 350);
-  });
-}
-
-/* -----------------------------------------------
-   SLIDESHOW — SCREEN 6
------------------------------------------------ */
-let slideIndex = 0;
-let slideTimer = null;
-const SLIDE_COUNT = 5;
-
-function initSlideshow() {
-  if (document.getElementById('slide-dots').children.length > 0) return;
-  const dotsEl = document.getElementById('slide-dots');
-  for (let i = 0; i < SLIDE_COUNT; i++) {
-    const d = document.createElement('div');
-    d.className = 'sdot' + (i === 0 ? ' active' : '');
-    d.onclick = () => showSlide(i);
-    dotsEl.appendChild(d);
-  }
-  clearInterval(slideTimer);
-  slideTimer = setInterval(() => showSlide((slideIndex + 1) % SLIDE_COUNT), 3800);
-}
-
-function showSlide(idx) {
-  const slides = document.querySelectorAll('.slide');
-  const sdots  = document.querySelectorAll('.sdot');
-  slides.forEach((s, i) => s.classList.toggle('active', i === idx));
-  sdots.forEach((d, i)  => d.classList.toggle('active', i === idx));
-  slideIndex = idx;
-}
-
-/* -----------------------------------------------
-   WISH LIST REVEAL — SCREEN 7
------------------------------------------------ */
-function revealWishList() {
-  const items = document.querySelectorAll('.wish-item');
-  items.forEach((item, i) => {
-    setTimeout(() => item.classList.add('visible'), 300 + i * 280);
-  });
-}
-
-/* -----------------------------------------------
-   VOICE NOTE — SCREEN 7
------------------------------------------------ */
-let voicePlaying = false;
-const voiceAudio = new Audio('voice.mp3');
-voiceAudio.onerror = () => {}; // silent fail if file missing
-
-function toggleVoiceNote() {
-  voicePlaying = !voicePlaying;
-  const label = document.getElementById('voice-label');
-  const msg   = document.getElementById('voice-msg');
-  const waves = document.querySelectorAll('#voice-wave span');
-  if (voicePlaying) {
-    voiceAudio.play().catch(() => {});
-    label.textContent = 'Pause';
-    msg.style.display = 'block';
-    waves.forEach(w => w.style.animationPlayState = 'running');
-  } else {
-    voiceAudio.pause();
-    label.textContent = 'Play voice note';
-    msg.style.display = 'none';
-    waves.forEach(w => w.style.animationPlayState = 'paused');
-  }
-}
-
-/* -----------------------------------------------
-   BACKGROUND MUSIC (Web Audio API — gentle ambient)
------------------------------------------------ */
-let audioCtx = null;
-let musicNodes = [];
-let musicOn = false;
-
-function buildMusic() {
-  if (audioCtx) return;
-  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  const master = audioCtx.createGain();
-  master.gain.value = 0.06;
-  master.connect(audioCtx.destination);
-
-  // Soft pad — stack of sine oscillators detuned slightly
-  const freqs = [261.63, 329.63, 392.00, 523.25]; // C major
-  freqs.forEach((freq, i) => {
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.type = 'sine';
-    osc.frequency.value = freq;
-    osc.detune.value = (i % 2 === 0 ? 3 : -3);
-    gain.gain.value = 0.4 + (i * 0.05);
-    osc.connect(gain);
-    gain.connect(master);
-    osc.start();
-    musicNodes.push(osc, gain);
+  /* Keyboard */
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') goToScreen(currentScreen + 1);
+    if (e.key === 'ArrowUp'   || e.key === 'ArrowLeft')  goToScreen(currentScreen - 1);
   });
 
-  // Gentle slow pulse on master gain
-  const lfo = audioCtx.createOscillator();
-  const lfoGain = audioCtx.createGain();
-  lfo.frequency.value = 0.08;
-  lfoGain.gain.value = 0.025;
-  lfo.connect(lfoGain);
-  lfoGain.connect(master.gain);
-  lfo.start();
-  musicNodes.push(lfo, lfoGain, master);
-}
+  /* -----------------------------------------------
+     TYPING ANIMATION — SCREEN 1
+  ----------------------------------------------- */
+  const typingLines = [
+    "Hey man — today is your day.",
+    "Not a regular birthday wish.",
+    "This one is built just for you.",
+    "Sit back, and feel it. 🙌"
+  ];
+  let tl = 0, tc = 0, typing = true;
+  const typingEl = document.getElementById('typing-text');
 
-function playBgMusic() {
-  if (musicOn) return;
-  try {
-    buildMusic();
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-    musicOn = true;
-    document.getElementById('music-btn').textContent = '🔊';
-  } catch(e) {}
-}
-
-function stopBgMusic() {
-  if (!audioCtx) return;
-  try {
-    audioCtx.suspend();
-    musicOn = false;
-    document.getElementById('music-btn').textContent = '🎵';
-  } catch(e) {}
-}
-
-document.getElementById('music-btn').addEventListener('click', () => {
-  if (musicOn) stopBgMusic(); else playBgMusic();
-});
-
-/* -----------------------------------------------
-   CONFETTI
------------------------------------------------ */
-const confCanvas = document.getElementById('confetti-canvas');
-const confCtx    = confCanvas.getContext('2d');
-let confParticles = [];
-let confRunning = false;
-let confFrame;
-
-function resizeConf() {
-  confCanvas.width  = window.innerWidth;
-  confCanvas.height = window.innerHeight;
-}
-resizeConf();
-window.addEventListener('resize', resizeConf);
-
-function makeParticle() {
-  const colors = ['#a8d8ff','#d7a8ff','#ffa8d8','#ffd8a8','#a8ffd8','#ffe8a8'];
-  return {
-    x: Math.random() * confCanvas.width,
-    y: -12,
-    vx: (Math.random() - .5) * 3,
-    vy: Math.random() * 3 + 2,
-    rot: Math.random() * 360,
-    drot: (Math.random() - .5) * 6,
-    w: Math.random() * 10 + 6,
-    h: Math.random() * 6 + 3,
-    color: colors[Math.floor(Math.random() * colors.length)],
-    alpha: 1
-  };
-}
-
-function createBalloons() {
-    for (let i = 0; i < 10; i++) {
-        let balloon = document.createElement("div");
-        balloon.className = "balloon";
-        balloon.style.left = Math.random() * 100 + "vw";
-        balloon.style.background = randomColor();
-        balloon.style.animationDuration = (5 + Math.random() * 5) + "s";
-        document.body.appendChild(balloon);
-
-        setTimeout(() => balloon.remove(), 10000);
-    }
-}
-
-function randomColor() {
-    const colors = ["#ff4d6d", "#ffafcc", "#bde0fe", "#cdb4db", "#a0c4ff"];
-    return colors[Math.floor(Math.random() * colors.length)];
-}
-
-function launchConfetti() {
-    // 🎆 Main burst
-    confetti({
-        particleCount: 150,
-        spread: 100,
-        origin: { y: 0.6 }
-    });
-
-    // 💥 Side blasts
-    setTimeout(() => {
-        confetti({
-            particleCount: 80,
-            angle: 60,
-            spread: 70,
-            origin: { x: 0 }
-        });
-        confetti({
-            particleCount: 80,
-            angle: 120,
-            spread: 70,
-            origin: { x: 1 }
-        });
-    }, 300);
-
-    // ✨ Continuous sparkle rain
-    let duration = 2 * 1000;
-    let end = Date.now() + duration;
-
-    (function frame() {
-        confetti({
-            particleCount: 5,
-            spread: 60,
-            ticks: 50,
-            origin: {
-                x: Math.random(),
-                y: Math.random() - 0.2
-            }
-        });
-
-        if (Date.now() < end) {
-            requestAnimationFrame(frame);
-        }
-    })();
-
-    // 🎈 Balloons
-    createBalloons();
-}
-
-function animateConf() {
-  if (!confRunning) return;
-  confCtx.clearRect(0, 0, confCanvas.width, confCanvas.height);
-  confParticles.forEach((p, i) => {
-    p.x  += p.vx;
-    p.y  += p.vy;
-    p.rot += p.drot;
-    p.vy += .06; // gravity
-    if (p.y > confCanvas.height + 20) {
-      // recycle a few times
-      if (Math.random() < .3) {
-        confParticles[i] = makeParticle();
+  function typeLoop() {
+    if (!typingEl) return;
+    if (typing) {
+      if (tc < typingLines[tl].length) {
+        typingEl.textContent += typingLines[tl][tc++];
+        setTimeout(typeLoop, 52);
       } else {
-        p.alpha -= .02;
+        typing = false;
+        setTimeout(typeLoop, 1600);
+      }
+    } else {
+      if (tc > 0) {
+        typingEl.textContent = typingLines[tl].substring(0, --tc);
+        setTimeout(typeLoop, 28);
+      } else {
+        typing = true;
+        tl = (tl + 1) % typingLines.length;
+        setTimeout(typeLoop, 400);
       }
     }
-    confCtx.save();
-    confCtx.globalAlpha = Math.max(p.alpha, 0);
-    confCtx.translate(p.x, p.y);
-    confCtx.rotate(p.rot * Math.PI / 180);
-    confCtx.fillStyle = p.color;
-    confCtx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
-    confCtx.restore();
-  });
-  confParticles = confParticles.filter(p => p.alpha > 0);
-  if (confParticles.length > 0) {
-    confFrame = requestAnimationFrame(animateConf);
-  } else {
-    confRunning = false;
-    confCtx.clearRect(0, 0, confCanvas.width, confCanvas.height);
   }
-}
+  typeLoop();
 
-/* -----------------------------------------------
-   STAR PARTICLES (background canvas)
------------------------------------------------ */
-const starsCanvas = document.getElementById('particles-canvas');
-const starsCtx    = starsCanvas.getContext('2d');
-let stars = [];
+  /* -----------------------------------------------
+     INTERACTIVE QUESTION — SCREEN 4
+  ----------------------------------------------- */
+  function pickOption(el, msg) {
+    document.querySelectorAll('.q-opt').forEach(o => o.classList.remove('selected'));
+    el.classList.add('selected');
 
-function resizeStars() {
-  starsCanvas.width  = window.innerWidth;
-  starsCanvas.height = window.innerHeight;
-  buildStars();
-}
+    const resp = document.getElementById('q-response');
+    if (resp) {
+      resp.style.opacity = 0;
+      setTimeout(() => {
+        resp.textContent = '✨ ' + msg;
+        resp.style.opacity = 1;
+      }, 220);
+    }
 
-function buildStars() {
-  stars = [];
-  const count = Math.floor((starsCanvas.width * starsCanvas.height) / 4200);
-  for (let i = 0; i < count; i++) {
-    stars.push({
-      x: Math.random() * starsCanvas.width,
-      y: Math.random() * starsCanvas.height,
-      r: Math.random() * 1.8 + .3,
-      alpha: Math.random(),
-      dalpha: (Math.random() * .008 + .003) * (Math.random() < .5 ? 1 : -1)
+    const btn = document.getElementById('q-next-btn');
+    if (btn) {
+      btn.style.opacity = '1';
+      btn.style.pointerEvents = 'all';
+    }
+  }
+
+  /* -----------------------------------------------
+     CHAT — SCREEN 5
+  ----------------------------------------------- */
+  const chatMessages = [
+    { side: 'left',  text: "Bro, you up? Need to talk about something.", time: "10:42 PM" },
+    { side: 'right', text: "Always 🫡 what's going on?", time: "10:43 PM" },
+    { side: 'left',  text: "I'm overthinking everything again. The whole future thing.", time: "10:44 PM" },
+    { side: 'right', text: "Breathe. You've handled worse. Remember last year? You thought that too.", time: "10:45 PM" },
+    { side: 'left',  text: "Yeah but this feels different man.", time: "10:46 PM" },
+    { side: 'right', text: "It always does. That's just the brain being loud. You're good. We're good. 💙", time: "10:47 PM" },
+    { side: 'left',  text: "Lol how are you always this calm 😭", time: "10:49 PM" },
+    { side: 'right', text: "Because one of us has to be 😂  Also — you'd do the same for me.", time: "10:50 PM" },
+    { side: 'left',  text: "Seriously though. Thanks, Sathwik. You don't know how much this helps.", time: "10:52 PM" },
+    { side: 'right', text: "That's what brothers are for. Now sleep — we've got things to conquer tomorrow 🚀", time: "10:53 PM" },
+  ];
+
+  function populateChat() {
+    const body = document.getElementById('chat-body');
+    if (!body || body.children.length > 0) return;
+
+    chatMessages.forEach((m, i) => {
+      setTimeout(() => {
+        const row = document.createElement('div');
+        row.className = 'msg-row ' + (m.side === 'right' ? 'right' : '');
+        row.innerHTML = `
+          <div class="avatar" style="width:28px;height:28px;font-size:.65rem;">${m.side === 'left' ? 'SG' : 'VM'}</div>
+          <div>
+            <div class="msg-time" style="text-align:${m.side === 'right' ? 'right' : 'left'}">${m.time}</div>
+            <div class="bubble bubble-${m.side}">${m.text}</div>
+          </div>`;
+        body.appendChild(row);
+        body.scrollTop = body.scrollHeight;
+      }, i * 350);
     });
   }
-}
 
-function animateStars() {
-  starsCtx.clearRect(0, 0, starsCanvas.width, starsCanvas.height);
-  stars.forEach(s => {
-    s.alpha += s.dalpha;
-    if (s.alpha <= 0 || s.alpha >= 1) s.dalpha *= -1;
-    starsCtx.beginPath();
-    starsCtx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-    starsCtx.fillStyle = `rgba(255,255,255,${s.alpha.toFixed(2)})`;
-    starsCtx.fill();
+  /* -----------------------------------------------
+     SLIDESHOW — SCREEN 6
+  ----------------------------------------------- */
+  let slideIndex = 0;
+  let slideTimer = null;
+  const SLIDE_COUNT = 5;
+
+  function initSlideshow() {
+    const dotsEl = document.getElementById('slide-dots');
+    if (!dotsEl || dotsEl.children.length > 0) return;
+
+    for (let i = 0; i < SLIDE_COUNT; i++) {
+      const d = document.createElement('div');
+      d.className = 'sdot' + (i === 0 ? ' active' : '');
+      d.onclick = () => showSlide(i);
+      dotsEl.appendChild(d);
+    }
+    clearInterval(slideTimer);
+    slideTimer = setInterval(() => showSlide((slideIndex + 1) % SLIDE_COUNT), 3800);
+  }
+
+  function showSlide(idx) {
+    const slides = document.querySelectorAll('.slide');
+    const sdots  = document.querySelectorAll('.sdot');
+    slides.forEach((s, i) => s.classList.toggle('active', i === idx));
+    sdots.forEach((d, i)  => d.classList.toggle('active', i === idx));
+    slideIndex = idx;
+  }
+
+  /* -----------------------------------------------
+     WISH LIST REVEAL — SCREEN 7
+  ----------------------------------------------- */
+  function revealWishList() {
+    const items = document.querySelectorAll('.wish-item');
+    items.forEach((item, i) => {
+      setTimeout(() => item.classList.add('visible'), 300 + i * 280);
+    });
+  }
+
+  /* -----------------------------------------------
+     VOICE NOTE — SCREEN 7
+  ----------------------------------------------- */
+  let voicePlaying = false;
+  const voiceAudio = new Audio('voice.mp3');
+  voiceAudio.onerror = () => {}; // silent fail if file missing
+  voiceAudio.addEventListener('ended', () => {
+    // reset UI when audio ends naturally
+    voicePlaying = false;
+    const label = document.getElementById('voice-label');
+    const msg   = document.getElementById('voice-msg');
+    const waves = document.querySelectorAll('#voice-wave span');
+    if (label) label.textContent = 'Play voice note';
+    if (msg) msg.style.display = 'none';
+    waves.forEach(w => w.style.animationPlayState = 'paused');
   });
-  requestAnimationFrame(animateStars);
-}
 
-resizeStars();
-animateStars();
-window.addEventListener('resize', resizeStars);
-</script>
+  function toggleVoiceNote() {
+    voicePlaying = !voicePlaying;
+    const label = document.getElementById('voice-label');
+    const msg   = document.getElementById('voice-msg');
+    const waves = document.querySelectorAll('#voice-wave span');
+
+    if (voicePlaying) {
+      voiceAudio.play().catch(() => {});
+      if (label) label.textContent = 'Pause';
+      if (msg) msg.style.display = 'block';
+      waves.forEach(w => w.style.animationPlayState = 'running');
+    } else {
+      voiceAudio.pause();
+      if (label) label.textContent = 'Play voice note';
+      if (msg) msg.style.display = 'none';
+      waves.forEach(w => w.style.animationPlayState = 'paused');
+    }
+  }
+
+  /* -----------------------------------------------
+     BACKGROUND MUSIC (Web Audio API — gentle ambient)
+  ----------------------------------------------- */
+  let audioCtx = null;
+  let musicOn = false;
+
+  function buildMusic() {
+    if (audioCtx) return;
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    const master = audioCtx.createGain();
+    master.gain.value = 0.06;
+    master.connect(audioCtx.destination);
+
+    // Soft pad — stack of sine oscillators detuned slightly
+    const freqs = [261.63, 329.63, 392.00, 523.25]; // C major
+    freqs.forEach((freq, i) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      osc.detune.value = (i % 2 === 0 ? 3 : -3);
+      gain.gain.value = 0.4 + (i * 0.05);
+      osc.connect(gain);
+      gain.connect(master);
+      osc.start();
+    });
+
+    // Gentle slow pulse on master gain
+    const lfo = audioCtx.createOscillator();
+    const lfoGain = audioCtx.createGain();
+    lfo.frequency.value = 0.08;
+    lfoGain.gain.value = 0.025;
+    lfo.connect(lfoGain);
+    lfoGain.connect(master.gain);
+    lfo.start();
+  }
+
+  function playBgMusic() {
+    if (musicOn) return;
+    try {
+      buildMusic();
+      if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+      musicOn = true;
+      document.getElementById('music-btn').textContent = '🔊';
+    } catch(e) {}
+  }
+
+  function stopBgMusic() {
+    if (!audioCtx) return;
+    try {
+      audioCtx.suspend();
+      musicOn = false;
+      document.getElementById('music-btn').textContent = '🎵';
+    } catch(e) {}
+  }
+
+  document.getElementById('music-btn').addEventListener('click', () => {
+    if (musicOn) stopBgMusic(); else playBgMusic();
+  });
+
+  /* -----------------------------------------------
+     CONFETTI (lightweight built-in)
+     - Fixes: confetti(...) was referenced but not defined.
+  ----------------------------------------------- */
+  const confCanvas = document.getElementById('confetti-canvas');
+  const confCtx = confCanvas.getContext('2d', { alpha: true });
+
+  function resizeConf() {
+    confCanvas.width = window.innerWidth;
+    confCanvas.height = window.innerHeight;
+  }
+  resizeConf();
+  window.addEventListener('resize', resizeConf);
+
+  let confettiAnimId = null;
+  let confettiParticles = [];
+
+  function confetti(opts = {}) {
+    const {
+      particleCount = 80,
+      spread = 70,
+      angle = 90,
+      origin = { x: 0.5, y: 0.5 },
+      ticks = 200
+    } = opts;
+
+    const colors = ["#ff4d6d", "#ffafcc", "#bde0fe", "#cdb4db", "#a0c4ff", "#a8d8ff", "#d7a8ff", "#ffa8d8", "#ffd8a8", "#a8ffd8"];
+
+    const startX = (origin.x ?? 0.5) * confCanvas.width;
+    const startY = (origin.y ?? 0.5) * confCanvas.height;
+
+    const rad = (angle * Math.PI) / 180;
+    const half = (spread * Math.PI) / 180;
+
+    for (let i = 0; i < particleCount; i++) {
+      const a = rad + (Math.random() - 0.5) * 2 * half;
+      const speed = 4 + Math.random() * 7;
+      const vx = Math.cos(a) * speed;
+      const vy = Math.sin(a) * speed;
+
+      confettiParticles.push({
+        x: startX,
+        y: startY,
+        vx,
+        vy,
+        g: 0.12 + Math.random() * 0.08,
+        w: 6 + Math.random() * 6,
+        h: 3 + Math.random() * 5,
+        rot: Math.random() * Math.PI,
+        drot: (Math.random() - 0.5) * 0.25,
+        color: colors[(Math.random() * colors.length) | 0],
+        life: ticks,
+        alpha: 1
+      });
+    }
+
+    if (!confettiAnimId) confettiAnimId = requestAnimationFrame(stepConfetti);
+  }
+
+  function stepConfetti() {
+    confCtx.clearRect(0, 0, confCanvas.width, confCanvas.height);
+
+    confettiParticles = confettiParticles.filter(p => p.life > 0 && p.alpha > 0);
+
+    for (const p of confettiParticles) {
+      p.life -= 1;
+
+      p.vy += p.g;
+      p.x += p.vx;
+      p.y += p.vy;
+
+      p.rot += p.drot;
+      p.alpha = Math.min(1, p.life / 60);
+
+      confCtx.save();
+      confCtx.globalAlpha = p.alpha;
+      confCtx.translate(p.x, p.y);
+      confCtx.rotate(p.rot);
+      confCtx.fillStyle = p.color;
+      confCtx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      confCtx.restore();
+    }
+
+    if (confettiParticles.length > 0) {
+      confettiAnimId = requestAnimationFrame(stepConfetti);
+    } else {
+      cancelAnimationFrame(confettiAnimId);
+      confettiAnimId = null;
+      confCtx.clearRect(0, 0, confCanvas.width, confCanvas.height);
+    }
+  }
+
+  function createBalloons() {
+    for (let i = 0; i < 10; i++) {
+      const balloon = document.createElement("div");
+      balloon.className = "balloon";
+      balloon.style.left = Math.random() * 100 + "vw";
+      balloon.style.background = randomColor();
+      balloon.style.animationDuration = (5 + Math.random() * 5) + "s";
+      document.body.appendChild(balloon);
+      setTimeout(() => balloon.remove(), 11000);
+    }
+  }
+
+  function randomColor() {
+    const colors = ["#ff4d6d", "#ffafcc", "#bde0fe", "#cdb4db", "#a0c4ff"];
+    return colors[Math.floor(Math.random() * colors.length)];
+  }
+
+  function launchConfetti() {
+    // main burst
+    confetti({ particleCount: 150, spread: 100, origin: { x: 0.5, y: 0.6 }, ticks: 220 });
+
+    // side blasts
+    setTimeout(() => {
+      confetti({ particleCount: 80, angle: 60, spread: 70, origin: { x: 0.0, y: 0.65 }, ticks: 200 });
+      confetti({ particleCount: 80, angle: 120, spread: 70, origin: { x: 1.0, y: 0.65 }, ticks: 200 });
+    }, 300);
+
+    // sparkle rain
+    const duration = 2000;
+    const end = Date.now() + duration;
+
+    (function frame() {
+      confetti({
+        particleCount: 5,
+        spread: 60,
+        ticks: 90,
+        origin: { x: Math.random(), y: Math.random() * 0.25 }
+      });
+      if (Date.now() < end) requestAnimationFrame(frame);
+    })();
+
+    createBalloons();
+  }
+
+  /* -----------------------------------------------
+     STAR PARTICLES (background canvas)
+  ----------------------------------------------- */
+  const starsCanvas = document.getElementById('particles-canvas');
+  const starsCtx    = starsCanvas.getContext('2d');
+  let stars = [];
+
+  function resizeStars() {
+    starsCanvas.width  = window.innerWidth;
+    starsCanvas.height = window.innerHeight;
+    buildStars();
+  }
+
+  function buildStars() {
+    stars = [];
+    const count = Math.floor((starsCanvas.width * starsCanvas.height) / 4200);
+    for (let i = 0; i < count; i++) {
+      stars.push({
+        x: Math.random() * starsCanvas.width,
+        y: Math.random() * starsCanvas.height,
+        r: Math.random() * 1.8 + .3,
+        alpha: Math.random(),
+        dalpha: (Math.random() * .008 + .003) * (Math.random() < .5 ? 1 : -1)
+      });
+    }
+  }
+
+  function animateStars() {
+    starsCtx.clearRect(0, 0, starsCanvas.width, starsCanvas.height);
+    for (const s of stars) {
+      s.alpha += s.dalpha;
+      if (s.alpha <= 0 || s.alpha >= 1) s.dalpha *= -1;
+      starsCtx.beginPath();
+      starsCtx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      starsCtx.fillStyle = `rgba(255,255,255,${s.alpha.toFixed(2)})`;
+      starsCtx.fill();
+    }
+    requestAnimationFrame(animateStars);
+  }
+
+  resizeStars();
+  animateStars();
+  window.addEventListener('resize', resizeStars);
+  </script>
 </body>
 </html>
